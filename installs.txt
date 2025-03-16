@@ -1,0 +1,6 @@
+SWASTIK - pip install flask pandas numpy nltk requests beautifulsoup4 googlesearch-python
+python -c "import nltk; nltk.download('wordnet'); nltk.download('stopwords')"
+
+ME - pip install flask requests os json
+
+SRJAN - pip install tensorflow pillow

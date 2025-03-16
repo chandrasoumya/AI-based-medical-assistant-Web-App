@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chest X-ray Results - Artemis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Set the background image of the body */
+        body {
+            background-image: url('/static/chestb.png');
+            background-size: cover; /* Ensures the image covers the entire background */
+            background-position: center; /* Centers the background image */
+            background-repeat: no-repeat; /* Prevents the image from repeating */
+            background-attachment: fixed; /* Keeps the image fixed while scrolling */
+        }
+
+        /* Ensure the body takes the full viewport height */
+        html, body {
+            height: 100%;
+        }
+    </style>
+</head>
+<body class="pt-20">
+    <!-- Navigation Bar -->
+    <nav class="w-full bg-gray-900 fixed top-0 left-0 right-0 flex justify-between items-center px-10 py-4 shadow-md z-10">
+        <div class="text-2xl font-bold flex items-center text-white">
+            <img src="/static/artemis.png" class="w-10 h-10">
+            <span class="ml-2">Artemis</span>
+        </div>
+        <ul class="flex space-x-6 text-white">
+            <li class="hover:text-blue-400 cursor-pointer"><a href="/">Home</a></li>
+            <li class="hover:text-blue-400 cursor-pointer"><a href="/predict">Prediction</a></li>
+            <li class="hover:text-blue-400 cursor-pointer"><a href="/predict_xray">Chest X-Ray</a></li>
+            <li class="hover:text-blue-400 cursor-pointer"><a href="/predict_skin">Skin disease</a></li>
+            <li class="hover:text-blue-400 cursor-pointer"><a href="/covid19">Lung disease</a></li>
+            <li class="hover:text-blue-400 cursor-pointer"><a href="/chat">Chatbot</a></li>
+        </ul>
+    </nav>
+
+    <!-- Chest X-ray Results Container -->
+    <div class="w-full max-w-3xl bg-black text-white shadow-lg rounded-lg p-6 mx-auto mt-32 z-20">
+        <div class="text-2xl font-bold text-white mb-4 text-center">Chest X-ray Analysis Results</div>
+        <div class="bg-gray-900 text-white p-4 rounded-lg border border-gray-700">
+            {% if error %}
+                <p class="text-red-400">{{ error }}</p>
+            {% else %}
+                <!-- Display the uploaded X-ray image -->
+                <div class="mb-4">
+                    <img src="/static/{{ image_path }}" class="w-full h-auto rounded-lg" alt="Uploaded X-ray">
+                </div>
+                <!-- Display prediction results -->
+                <div>
+                    <p class="font-bold text-lg mb-2">Predicted Conditions:</p>
+                    <ul class="list-disc pl-5 space-y-2">
+                        {% for pred in predictions %}
+                            <li>{{ pred.disease }}: <span class="text-teal-400">{{ pred.confidence }}%</span> confidence</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <!-- Back to Prediction Button -->
+                <div class="mt-6">
+                    <a href="/predict_xray" class="bg-teal-500 text-white px-6 py-3 rounded-lg w-full text-center inline-block">Analyze Another X-ray</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

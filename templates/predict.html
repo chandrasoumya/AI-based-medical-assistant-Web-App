@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Symptom Checker</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-image: url('/static/bb.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            color: white; /* Make all body text white */
+        }
+        h1, h2, h3, h4, h5, h6, p, ul, li, label {
+            color: white; /* Ensure that headings and text elements have white color */
+        }
+        .text-gray-700 {
+            color: white !important; /* Override gray text classes to white */
+        }
+        .text-gray-800 {
+            color: white !important; /* Override gray text classes to white */
+        }
+        .text-gray-900 {
+            color: white !important; /* Override gray text classes to white */
+        }
+        /* Custom style for gray input */
+        .input-gray {
+            background-color: #2d3748; /* Dark gray background */
+            border: 1px solid #4a5568; /* Darker border */
+            color: white; /* White text color */
+        }
+    </style>
+</head>
+<body class="font-sans pt-20">
+
+    <!-- Navigation Bar -->
+    <nav class="w-full bg-gray-900 fixed top-0 left-0 right-0 flex justify-between items-center px-10 py-4 shadow-md">
+        <div class="text-2xl font-bold flex items-center text-white">
+            <img src="/static/artemis.png" class="w-10 h-10">
+            <span class="ml-2">Artemis</span>
+        </div>
+        <ul class="flex space-x-6 text-white">
+            <li class="hover:text-blue-400 cursor-pointer"><a href="/">Home</a></li>
+            <li class="hover:text-blue-400 cursor-pointer"><a href="/predict">Prediction</a></li>
+            <li class="hover:text-blue-400 cursor-pointer"><a href="/predict_xray">Chest X-Ray</a></li>
+            <li class="hover:text-blue-400 cursor-pointer"><a href="/predict_skin">Skin disease</a></li>
+            <li class="hover:text-blue-400 cursor-pointer"><a href="/covid19">Lung disease</a></li>
+            <li class="hover:text-blue-400 cursor-pointer"><a href="/chat">Chatbot</a></li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="w-full max-w-3xl bg-black text-white shadow-lg rounded-lg p-6 mx-auto mt-28">
+        <h2 class="text-4xl font-bold text-center mb-12">Medical Symptom Checker</h2>
+
+        <!-- Symptom Input Form -->
+        <form id="symptom-form" class="space-y-6">
+            <div class="flex flex-col items-center">
+                <label for="symptoms" class="text-lg font-semibold mb-2">Enter Symptoms (comma-separated):</label>
+                <input type="text" id="symptoms" name="symptoms" required class="w-full max-w-md px-4 py-2 input-gray rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div class="flex justify-center mt-4">
+                <button type="submit" class="w-full max-w-md px-6 py-2 bg-teal-500 text-white font-semibold rounded-md hover:bg-teal-600 transition">Submit</button>
+            </div>
+        </form>
+
+        <!-- Matching Symptoms -->
+        <div id="matching-symptoms" class="hidden mt-12">
+            <h3 class="text-2xl font-semibold mb-4">Matching Symptoms</h3>
+            <ul id="symptom-list" class="space-y-4">
+                <!-- Matching symptoms will appear here -->
+            </ul>
+            <button id="confirm-symptoms" class="w-full max-w-md px-6 py-2 bg-teal-500 text-white font-semibold rounded-md hover:bg-teal-600 transition mt-4">Confirm Selection</button>
+        </div>
+
+        <!-- Suggested Co-occurring Symptoms -->
+        <div id="suggested-symptoms" class="hidden mt-12">
+            <h3 class="text-2xl font-semibold mb-4">Additional Common Symptoms</h3>
+            <ul id="suggestion-list" class="space-y-4"></ul>
+            <div class="mt-6 flex justify-between space-x-4">
+                <button id="confirm-additional" class="w-full max-w-md px-6 py-2 bg-teal-500 text-white font-semibold rounded-md hover:bg-teal-600 transition">Add Selected</button>
+                <button id="skip-additional" class="w-full max-w-md px-6 py-2 bg-teal-500 text-white font-semibold rounded-md hover:bg-teal-600 transition">Skip</button>
+            </div>
+        </div>
+
+        <!-- Final Selected Symptoms -->
+        <div id="final-symptoms" class="hidden mt-12">
+            <h3 class="text-2xl font-semibold mb-4">Final Symptoms Selected</h3>
+            <ul id="final-list" class="space-y-4"></ul>
+            <button id="predict-disease" class="w-full max-w-md px-6 py-2 bg-teal-500 text-white font-semibold rounded-md hover:bg-teal-600 transition mt-4">Predict Disease</button>
+        </div>
+
+        <!-- Disease Predictions -->
+        <div id="disease-predictions" class="hidden mt-12">
+            <h3 class="text-2xl font-semibold mb-4">Predicted Diseases</h3>
+            <ul id="prediction-list" class="space-y-4"></ul>
+        </div>
+
+        <!-- Disease Details Section -->
+        <div id="disease-details" class="hidden mt-12">
+            <h3 class="text-2xl font-semibold mb-4">Disease Information</h3>
+            <p id="disease-info" class="leading-relaxed"></p>
+        </div>
+    </div>
+
+    <script>
+    $(document).ready(function() {
+        let foundSymptoms = [];
+        let selectedSymptoms = [];
+        let suggestedSymptoms = [];
+
+        $("#symptom-form").submit(function(event) {
+            event.preventDefault();
+            let symptoms = $("#symptoms").val();
+
+            $.post("/process_symptoms", { symptoms: symptoms }, function(data) {
+                foundSymptoms = data.found_symptoms;
+                $("#symptom-list").empty();
+                foundSymptoms.forEach((symptom, index) => {
+                    $("#symptom-list").append(`<li class="flex items-center space-x-2 cursor-pointer" onclick="toggleCheckbox(this)">
+                        <input type="checkbox" value="${index}" class="w-6 h-6 accent-teal-500">
+                        <label class="text-lg">${symptom}</label>
+                    </li>`);
+                });
+                $("#matching-symptoms").show();
+            });
+        });
+
+        $("#confirm-symptoms").click(function() {
+            let selectedIndices = [];
+            $("#symptom-list input:checked").each(function() {
+                selectedIndices.push($(this).val());
+            });
+
+            $.ajax({
+                url: "/select_symptoms",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({ selected_indices: selectedIndices, found_symptoms: foundSymptoms }),
+                success: function(response) {
+                    selectedSymptoms = response.selected_symptoms;
+                    suggestedSymptoms = response.related_symptoms.map(item => item[0]);
+                    $("#final-list").empty();
+                    selectedSymptoms.forEach(symptom => {
+                        $("#final-list").append(`<li>${symptom}</li>`);
+                    });
+                    $("#matching-symptoms").hide();
+                    suggestNextBatch();
+                }
+            });
+        });
+
+        function suggestNextBatch() {
+            $("#suggestion-list").empty();
+            if (suggestedSymptoms.length === 0) {
+                $("#suggested-symptoms").hide();
+                $("#final-symptoms").show();
+                return;
+            }
+            let batch = suggestedSymptoms.slice(0, 5);
+            batch.forEach(symptom => {
+                $("#suggestion-list").append(`<li class="flex items-center space-x-2 cursor-pointer" onclick="toggleCheckbox(this)">
+                    <input type="checkbox" value="${symptom}" class="w-6 h-6 accent-teal-500">
+                    <label class="text-lg">${symptom}</label>
+                </li>`);
+            });
+            $("#suggested-symptoms").show();
+        }
+
+        $("#confirm-additional").click(function() {
+            let newSelections = [];
+            $("#suggestion-list input:checked").each(function() {
+                newSelections.push($(this).val());
+            });
+            suggestedSymptoms = suggestedSymptoms.filter(symptom => !newSelections.includes(symptom));
+            selectedSymptoms.push(...newSelections);
+            $("#final-list").empty();
+            selectedSymptoms.forEach(symptom => {
+                $("#final-list").append(`<li>${symptom}</li>`);
+            });
+            suggestNextBatch();
+        });
+
+        $("#skip-additional").click(function() {
+            $("#suggested-symptoms").hide();
+            $("#final-symptoms").show();
+        });
+
+        $("#predict-disease").click(function() {
+            $.ajax({
+                url: "/predict_disease",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({ final_symptoms: selectedSymptoms }),
+                success: function(response) {
+                    $("#prediction-list").empty();
+                    response.predictions.forEach(prediction => {
+                        let listItem = `<li class="flex justify-between items-center">
+                            <span>${prediction.disease} - ${prediction.probability}%</span>
+                            <button class="get-info px-6 py-2 bg-teal-500 text-white font-semibold rounded-md hover:bg-teal-600 transition" data-disease="${prediction.disease}">Get Info</button>
+                        </li>`;
+                        $("#prediction-list").append(listItem);
+                    });
+                    $("#disease-predictions").show();
+                }
+            });
+        });
+
+        $(document).on("click", ".get-info", function() {
+            let disease = $(this).data("disease");
+            $(this).addClass("px-6 py-2 bg-teal-500 text-white font-semibold rounded-md hover:bg-teal-600 transition");
+
+            $("#disease-info").html("Fetching data...");
+            
+            $.ajax({
+                type: "POST",
+                url: "/disease_details",
+                data: { disease: disease },
+                dataType: "json",
+                cache: false,
+                success: function(response) {
+                    if (!response.details) {
+                        $("#disease-info").html("Error retrieving disease details.");
+                        return;
+                    }
+                    let details = response.details;
+                    let formattedInfo = `<strong>Disease:</strong> ${response.disease}<br>`;
+                    Object.entries(details).forEach(([key, value]) => {
+                        formattedInfo += `<strong>${key}:</strong> ${value}<br>`;
+                    });
+
+                    $("#disease-info").html(formattedInfo);
+                    $("#disease-details").show();
+                },
+                error: function() {
+                    console.error("AJAX Error:", status, error);
+                    $("#disease-info").html("Failed to fetch disease details.");
+                }
+            });
+        });
+
+        // Toggle checkbox when clicking on the symptom label
+        window.toggleCheckbox = function(element) {
+            const checkbox = $(element).find('input');
+            checkbox.prop('checked', !checkbox.prop('checked'));
+        };
+    });
+    </script>
+
+</body>
+</html>

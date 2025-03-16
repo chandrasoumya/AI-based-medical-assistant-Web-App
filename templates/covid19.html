@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lung disiese Analysis - Artemis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Set the background image of the body */
+        body {
+            background-image: url('/static/xray.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+    </style>
+</head>
+<body class="pt-20">
+    <!-- Navigation Bar -->
+    <nav class="w-full bg-gray-900 fixed top-0 left-0 right-0 flex justify-between items-center px-10 py-4 shadow-md">
+        <div class="text-2xl font-bold flex items-center text-white">
+            <img src="/static/artemis.png" class="w-10 h-10">
+            <span class="ml-2">Artemis</span>
+        </div>
+        <ul class="flex space-x-6 text-white">
+            <li class="hover:text-blue-400 cursor-pointer"><a href="/">Home</a></li>
+            <li class="hover:text-blue-400 cursor-pointer"><a href="/predict">Prediction</a></li>
+            <li class="hover:text-blue-400 cursor-pointer"><a href="/predict_xray">Chest X-Ray</a></li>
+            <li class="hover:text-blue-400 cursor-pointer"><a href="/predict_skin">Skin disease</a></li>
+            <li class="hover:text-blue-400 cursor-pointer"><a href="/covid19">Lung disease</a></li>
+            <li class="hover:text-blue-400 cursor-pointer"><a href="/chat">Chatbot</a></li>
+        </ul>
+    </nav>
+
+    <!-- COVID-19 X-ray Container -->
+    <div class="w-full max-w-3xl bg-black text-white shadow-lg rounded-lg p-6 mx-auto mt-10">
+        <div class="text-2xl font-bold text-white mb-4 text-center">COVID-19/X-ray Analysis</div>
+        <div class="bg-gray-900 text-white p-4 rounded-lg border border-gray-700">
+            <form id="covid-xray-form" enctype="multipart/form-data">
+                <input type="file" id="covid-xray-image" name="xray_image" accept="image/*" class="mb-4 text-white bg-gray-800 p-2 rounded w-full">
+                <button type="submit" class="bg-teal-500 text-white px-6 py-3 rounded-lg w-full">Analyze</button>
+            </form>
+            <div id="covid-xray-result" class="mt-4"></div>
+        </div>
+    </div>
+
+    <!-- X-ray Upload Modal (for Remedies) -->
+    <div id="xray-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden flex items-center justify-center">
+        <div class="bg-black text-white rounded-lg p-6 w-full max-w-md">
+            <h2 class="text-xl font-bold mb-4">Upload Chest X-ray</h2>
+            <form id="xray-form" enctype="multipart/form-data">
+                <input type="file" id="xray-image" name="xray_image" accept="image/*" class="mb-4 text-white bg-gray-800 p-2 rounded">
+                <div class="flex justify-end">
+                    <button type="button" onclick="closeXrayModal()" class="bg-gray-600 text-white px-4 py-2 rounded mr-2">Cancel</button>
+                    <button type="submit" class="bg-teal-500 text-white px-4 py-2 rounded">Analyze</button>
+                </div>
+            </form>
+            <div id="xray-result" class="mt-4"></div>
+        </div>
+    </div>
+
+    <script>
+        function toggleRemedies() {
+            const dropdown = document.getElementById("remedies-dropdown");
+            dropdown.classList.toggle("hidden");
+        }
+
+        function showXrayUpload() {
+            document.getElementById("xray-modal").classList.remove("hidden");
+            document.getElementById("remedies-dropdown").classList.add("hidden");
+        }
+
+        function closeXrayModal() {
+            document.getElementById("xray-modal").classList.add("hidden");
+            document.getElementById("xray-result").innerHTML = "";
+            document.getElementById("xray-image").value = "";
+        }
+
+        // Handle the X-ray upload and analysis
+        document.getElementById("covid-xray-form").addEventListener("submit", function(event) {
+            event.preventDefault();
+            const fileInput = document.getElementById("covid-xray-image");
+            if (!fileInput.files.length) {
+                alert("Please select an X-ray image.");
+                return;
+            }
+
+            // Preview the selected image
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const imageUrl = e.target.result;
+                document.getElementById("covid-xray-result").innerHTML = `<img src="${imageUrl}" class="w-full h-auto mt-4" alt="Uploaded X-ray">`;
+            };
+            reader.readAsDataURL(file);
+
+            // Submit the image for analysis
+            const formData = new FormData();
+            formData.append("xray_image", file);
+
+            const resultDiv = document.getElementById("covid-xray-result");
+            resultDiv.innerHTML = "<p class='text-gray-400'>Analyzing...</p>";
+
+            fetch("/predict_covid_xray", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    resultDiv.innerHTML = `<p class='text-red-400'>${data.error}</p>`;
+                } else {
+                    let resultHTML = "<p class='font-bold'>Top Predictions:</p><ul>";
+                    data.predictions.forEach(pred => {
+                        resultHTML += `<li>${pred.disease}: ${pred.confidence}%</li>`;
+                    });
+                    resultHTML += "</ul>";
+                    resultDiv.innerHTML += resultHTML;  // Display the predictions along with the image
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                resultDiv.innerHTML = "<p class='text-red-400'>Error occurred during analysis. Please try again.</p>";
+            });
+        });
+
+        document.getElementById("xray-form").addEventListener("submit", function(event) {
+            event.preventDefault();
+            const fileInput = document.getElementById("xray-image");
+            if (!fileInput.files.length) {
+                alert("Please select an X-ray image.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("xray_image", fileInput.files[0]);
+
+            const resultDiv = document.getElementById("xray-result");
+            resultDiv.innerHTML = "<p class='text-gray-400'>Analyzing...</p>";
+
+            fetch("/predict_xray", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    resultDiv.innerHTML = `<p class='text-red-400'>${data.error}</p>`;
+                } else {
+                    let resultHTML = "<p class='font-bold'>Analysis Results:</p><ul>";
+                    data.predictions.forEach(pred => {
+                        resultHTML += `<li>${pred.disease}: ${pred.confidence}% confidence</li>`;
+                    });
+                    resultHTML += "</ul>";
+                    resultDiv.innerHTML = resultHTML;
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                resultDiv.innerHTML = "<p class='text-red-400'>Error occurred during analysis. Please try again.</p>";
+            });
+        });
+    </script>
+</body>
+</html>
